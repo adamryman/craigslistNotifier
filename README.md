@@ -1,7 +1,7 @@
 craigslistNotifier
 ==================  
 
-Uses Twilo to text you when new craigslist listings are posted.  
+Uses Twilo or Gmail to notify you when new craigslist listings are posted.  
   
 Appending `&format=rss` to any craigslist search will give you an RSS version of that search.  
   
