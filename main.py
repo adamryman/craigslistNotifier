@@ -4,17 +4,34 @@ import urllib
 import os
 import sys
 
+__location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
+
+def location(file):
+  return os.path.join(__location__,file)
+
 ##Setting up variables
-rssfeed = 'http://seattle.craigslist.org/search/sss?catAbb=sss&query=expedit&sort=date&format=rss'
 if(len(sys.argv) > 1):
   rssfeed = sys.argv[1]
+  open(location('rss.txt'), 'w').write(rssfeed)
 
-__location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
+if not os.path.exists(location('rss.txt')):
+  print "Pass an RSS feed as a string parameter; Exiting."
+  sys.exit()
+rssfeed = open(location('rss.txt'), 'r')
+
 entries = {}
 newEntries = []
 
 #Setting up Twilio Stuff
-accountData = open(os.path.join(__location__,'accountData.txt' ), 'r')
+if not os.path.exists(location('accountData.txt')):
+  accountData = open(location('accountData.txt'), 'w')
+  accountData.write(raw_input('Twillio ACCOUNT_SID:') + '\n')
+  accountData.write(raw_input('Twillio AUTH_TOKEN:') + '\n')
+  accountData.write(raw_input('Twillio Phone Number (+19876543210):') + '\n')
+  accountData.write(raw_input('Receiving Phone Number (+19876543210):') + '\n')
+  accountData.close()
+
+accountData = open(location('accountData.txt'), 'r')
 
 ACCOUNT_SID = accountData.readline().rstrip()
 AUTH_TOKEN = accountData.readline().rstrip()
@@ -24,13 +41,15 @@ phoneReciver = accountData.readline().rstrip()
 client = TwilioRestClient(ACCOUNT_SID, AUTH_TOKEN)
 
 ##Loading entries file into entries object
-entriesFile = open(os.path.join(__location__,'entries.txt'), 'r')
+if not os.path.exists(location('entries.txt')):
+  open(location('entries.txt'), 'w').close()
+entriesFile = open(location('entries.txt'), 'r')
 for line in entriesFile:
   entries[line.rstrip()] = True
 entriesFile.close()
 
 ##get read to append to the entries
-entriesFile = open(os.path.join(__location__,'entries.txt'), 'a')
+entriesFile = open(location('entries.txt'), 'a')
 
 feed = feedparser.parse(rssfeed)
 
@@ -50,10 +69,10 @@ for link in newEntries:
   text += link + '\n'
 
 ##If the string is blank send it along
-#if text is not "":
-#  client.messages.create(
-#    from_= phoneSender, to = phoneReciver, body = text
-#  )
+if text is not "":
+  client.messages.create(
+    from_= phoneSender, to = phoneReciver, body = text
+  )
 
 ##Close the filestream
 entriesFile.close()
