@@ -25,9 +25,9 @@ newEntries = []
 #Setting up Twilio Stuff
 if not os.path.exists(location('accountData.txt')):
 	accountData = open(location('accountData.txt'), 'w')
-	accountData.write(raw_input('Twillio ACCOUNT_SID:') + '\n')
-	accountData.write(raw_input('Twillio AUTH_TOKEN:') + '\n')
-	accountData.write(raw_input('Twillio Phone Number (+19876543210):') + '\n')
+	accountData.write(raw_input('Twilio ACCOUNT_SID:') + '\n')
+	accountData.write(raw_input('Twilio AUTH_TOKEN:') + '\n')
+	accountData.write(raw_input('Twilio Phone Number (+19876543210):') + '\n')
 	accountData.write(raw_input('Receiving Phone Number (+19876543210):') + '\n')
 	accountData.close()
 
