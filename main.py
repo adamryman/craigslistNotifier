@@ -27,7 +27,6 @@ entriesFile.close()
 entriesFile = open(os.path.join(__location__,'entries.txt'), 'a')
 
 feed = feedparser.parse(rssfeed)
-print entries.keys()
 
 for i in range(0, len(feed['entries'])):
   entrie = feed['entries'][i].link
@@ -36,16 +35,13 @@ for i in range(0, len(feed['entries'])):
     newEntries.append(entrie + "")
     listing = urllib.urlopen(entrie)
 
-print newEntries
 text = ""
 for link in newEntries:
-  print link
   text += link + '\n'
 
-print text
-#if text is not "":
-#  client.messages.create(
-#    from_= phoneSender, to = phoneReciver, body = text
-#  )
+if text is not "":
+  client.messages.create(
+    from_= phoneSender, to = phoneReciver, body = text
+  )
 
 entriesFile.close()
