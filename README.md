@@ -1,8 +1,8 @@
-#rssNotifier
+#craigslistNotifier
 
-Uses Twillo to text you when RSS feed has additional items.
+Uses Twillo to text you when a RSS feed has additional items.
 
-I built this to notify me of new craigslist postings. Appending `&format=rss` to any craigslist search will give you an RSS version.
+I built this to notify me of new craigslist postings. Appending `&format=rss` to any craigslist search will give you an RSS version of that search.
 
 Example:  
 [http://seattle.craigslist.org/search/?sort=rel&areaID=2&subAreaID=&query=table&catAbb=sss](http://seattle.craigslist.org/search/?sort=rel&areaID=2&subAreaID=&query=table&catAbb=sss)  
