@@ -23,6 +23,7 @@
 
 import feedparser
 from twilio.rest import TwilioRestClient
+import smtplib
 import urllib
 import os
 import sys
@@ -45,23 +46,27 @@ rssfeed = open(location('rss.txt'), 'r')
 entries = {}
 newEntries = []
 
-#Setting up Twilio Stuff
+
 if not os.path.exists(location('accountData.txt')):
 	accountData = open(location('accountData.txt'), 'w')
-	accountData.write(raw_input('Twilio ACCOUNT_SID:') + '\n')
-	accountData.write(raw_input('Twilio AUTH_TOKEN:') + '\n')
-	accountData.write(raw_input('Twilio Phone Number (+19876543210):') + '\n')
-	accountData.write(raw_input('Receiving Phone Number (+19876543210):') + '\n')
-	accountData.close()
+	if int(raw_input('Which way would you like to receive notifications?:\n\t[0] Twilio\n\t[1] Gmail\n')):
+		print "You've selected 'Gmail'"
+		accountData.write('GMAIL\n')
+		accountData.write(raw_input('Gmail user (user_name@gmail.com):') + '\n')
+		accountData.write(raw_input('Gmail password:') + '\n')
+	else:
+		print "You've selected 'Twilio'"
+		accountData.write('TWILIO\n')
+		accountData.write(raw_input('Twilio ACCOUNT_SID:') + '\n')
+		accountData.write(raw_input('Twilio AUTH_TOKEN:') + '\n')
+		accountData.write(raw_input('Twilio Phone Number (+19876543210):') + '\n')
+		accountData.write(raw_input('Receiving Phone Number (+19876543210):') + '\n')
+		accountData.close()
 
-accountData = open(location('accountData.txt'), 'r')
 
-ACCOUNT_SID = accountData.readline().rstrip()
-AUTH_TOKEN = accountData.readline().rstrip()
-phoneSender = accountData.readline().rstrip()
-phoneReciver = accountData.readline().rstrip()
-
-client = TwilioRestClient(ACCOUNT_SID, AUTH_TOKEN)
+#
+## Get Feed Data
+#
 
 ##Loading entries file into entries object
 if not os.path.exists(location('entries.txt')):
@@ -74,30 +79,76 @@ entriesFile.close()
 ##get read to append to the entries
 entriesFile = open(location('entries.txt'), 'a')
 
-feed = feedparser.parse(rssfeed)
+feed = feedparser.parse(rssfeed.read())
 
 ##Go though all the entries, if there ones that were not in the entries
 ##file before, add them. Also add them to newEntries so we know what data
 ##to send
 for i in range(0, len(feed['entries'])):
-	entrie = feed['entries'][i].link
-	if entrie not in entries:
-		entriesFile.write(entrie + '\n')
-		newEntries.append(entrie + "")
-		listing = urllib.urlopen(entrie)
+	entry = feed['entries'][i].link
+	if entry not in entries:
+		entriesFile.write(entry + '\n')
+		newEntries.append(entry + "")
+		listing = urllib.urlopen(entry)
 
 ##Put all of the links into one string
 text = ""
 for link in newEntries:
 	text += link + '\n'
 
-##If the string is blank send it along
-if text is not "":
-	client.messages.create(
-		from_= phoneSender, to = phoneReciver, body = text
-	)
 
-##Close the filestream
-entriesFile.close()
+#
+## Sending the Data
+#
+# Sends the data using the method that's specified at the top of the 
 
+accountData = open(location('accountData.txt'), 'r')
+sendType = accountData.readline().rstrip()
+
+if sendType == "TWILIO":
+	ACCOUNT_SID = accountData.readline().rstrip()
+	AUTH_TOKEN = accountData.readline().rstrip()
+	phoneSender = accountData.readline().rstrip()
+	phoneReciver = accountData.readline().rstrip()
+
+	client = TwilioRestClient(ACCOUNT_SID, AUTH_TOKEN)
+
+
+	##If the string is blank send it along
+	if text is not "":
+		client.messages.create(
+			from_= phoneSender, to = phoneReciver, body = text
+		)
+
+	##Close the filestream
+	entriesFile.close()
+
+elif sendType == "GMAIL":
+
+	# Taken largely from here: http://stackoverflow.com/a/12424439
+
+	GMAIL_USER = accountData.readline().rstrip()
+	GMAIL_PSWD = accountData.readline().rstrip()
+
+	if text:
+		FROM = GMAIL_USER
+		TO = [GMAIL_USER] #must be a list
+		SUBJECT = "New Results from Feed!"
+		MESSAGE_BODY = "New Feed Results:\n"+text
+
+		# Prepares full message
+		fullMessage = """\From: %s\nTo: %s\nSubject: %s\n\n%s
+		""" % (FROM, ", ".join(TO), SUBJECT, MESSAGE_BODY)
+		
+		# Attempt to send email
+		try:
+			server = smtplib.SMTP("smtp.gmail.com", 587) #or port 465 doesn't seem to work!
+			server.ehlo()
+			server.starttls()
+			server.login(GMAIL_USER, GMAIL_PSWD)
+			server.sendmail(FROM, TO, fullMessage)
+			server.close()
+			print 'Successfully sent email'
+		except:
+			print "Failed to send mail"
 
