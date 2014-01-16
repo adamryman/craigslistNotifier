@@ -2,9 +2,13 @@ import feedparser
 from twilio.rest import TwilioRestClient
 import urllib
 import os
+import sys
 
 ##Setting up variables
 rssfeed = 'http://seattle.craigslist.org/search/sss?catAbb=sss&query=expedit&sort=date&format=rss'
+if(len(sys.argv) > 1):
+  rssfeed = sys.argv[1]
+
 __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
 entries = {}
 newEntries = []
@@ -46,10 +50,10 @@ for link in newEntries:
   text += link + '\n'
 
 ##If the string is blank send it along
-if text is not "":
-  client.messages.create(
-    from_= phoneSender, to = phoneReciver, body = text
-  )
+#if text is not "":
+#  client.messages.create(
+#    from_= phoneSender, to = phoneReciver, body = text
+#  )
 
 ##Close the filestream
 entriesFile.close()
