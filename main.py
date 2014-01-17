@@ -23,15 +23,28 @@
 
 import feedparser
 from twilio.rest import TwilioRestClient
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 import smtplib
 import urllib
-import os
+import json
 import sys
+import os
 
 __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
 def location(file):
 	return os.path.join(__location__,file)
+
+def getCListImgs(url):
+	myDat = urllib.urlopen(url).read()
+
+	myDat = myDat.split('imgList = ')[1]
+	myDat = myDat.split(';')[0]
+
+	imgList = json.loads(myDat)
+	return imgList
+
 
 ##Setting up variables
 if(len(sys.argv) > 1):
@@ -45,6 +58,7 @@ rssfeed = open(location('rss.txt'), 'r')
 
 entries = {}
 newEntries = []
+text = ""
 
 
 if not os.path.exists(location('accountData.txt')):
@@ -88,13 +102,15 @@ for i in range(0, len(feed['entries'])):
 	entry = feed['entries'][i].link
 	if entry not in entries:
 		entriesFile.write(entry + '\n')
-		newEntries.append(entry + "")
-		listing = urllib.urlopen(entry)
+		# newEntries.append(entry + "")
+		newEntries.append({
+			'link':	feed['entries'][i].link,
+			'summary': feed['entries'][i].summary,
+			'title' :  feed['entries'][i].title,
+			'imgs' :   getCListImgs(feed['entries'][i].link)
+			})
+		listing = urllib.urlopen(entry) # Why does this exist?
 
-##Put all of the links into one string
-text = ""
-for link in newEntries:
-	text += link + '\n'
 
 
 #
@@ -113,6 +129,10 @@ if sendType == "TWILIO":
 
 	client = TwilioRestClient(ACCOUNT_SID, AUTH_TOKEN)
 
+	# Do string processing for 
+	for data in newEntries:
+		text += data["link"] + '\n'
+
 
 	##If the string is blank send it along
 	if text is not "":
@@ -125,30 +145,55 @@ if sendType == "TWILIO":
 
 elif sendType == "GMAIL":
 
+	# We do this string formatting here because we format the text differently
+	# for emails verses non-emails
+	#
+	# Additionally, this is currently a really, really ugly way to format
+	# html. This could be formatted soooo much better/done in a less hacky
+	# way.
+	for data in newEntries:
+		text+= '<hr>'
+		text+= '<p>\n{}\n<h3><a href="{}">{}</a></h3>\
+		\n\t{}<br>'.format(data["link"],data["link"],data['title'],data["summary"])
+
+		for links in data['imgs']:
+			text+= '\t<img src="{}" height="150">\n'.format(links)
+		pass
+		text+= '</p>'
+
+
 	# Taken largely from here: http://stackoverflow.com/a/12424439
+	# and here: http://blog.spritecloud.com/2010/03/creating-and-sending-html-e-mails-with-python/
 
 	GMAIL_USER = accountData.readline().rstrip()
 	GMAIL_PSWD = accountData.readline().rstrip()
 
 	if text:
 		FROM = GMAIL_USER
-		TO = [GMAIL_USER] #must be a list
+		TO = GMAIL_USER 
 		SUBJECT = "New Results from Feed!"
-		MESSAGE_BODY = "New Feed Results:\n"+text
+		EMAIL_BODY = "New Feed Results:\n"+text
 
-		# Prepares full message
-		fullMessage = """\From: %s\nTo: %s\nSubject: %s\n\n%s
-		""" % (FROM, ", ".join(TO), SUBJECT, MESSAGE_BODY)
-		
+		MESSAGE = MIMEMultipart('alternative')
+		MESSAGE['subject'] = SUBJECT
+		MESSAGE['From'] = FROM
+		MESSAGE['To'] = TO
+		MESSAGE.preamble = EMAIL_BODY
+
+		text = MIMEText(text,'html')
+		MESSAGE.attach(text)
+
 		# Attempt to send email
 		try:
+			# exit()
 			server = smtplib.SMTP("smtp.gmail.com", 587) #or port 465 doesn't seem to work!
 			server.ehlo()
 			server.starttls()
 			server.login(GMAIL_USER, GMAIL_PSWD)
-			server.sendmail(FROM, TO, fullMessage)
+			server.sendmail(FROM, TO, MESSAGE.as_string())
 			server.close()
 			print 'Successfully sent email'
-		except:
+		except Exception as e:
 			print "Failed to send mail"
+			print e
 
