@@ -8,7 +8,7 @@ Appending `&format=rss` to any craigslist search will give you an RSS version of
 Example:  
 [http://seattle.craigslist.org/search/?sort=rel&areaID=2&subAreaID=&query=table&catAbb=sss](http://seattle.craigslist.org/search/?sort=rel&areaID=2&subAreaID=&query=table&catAbb=sss)  
 
-[http://seattle.craigslist.org/search/?sort=rel&areaID=2&subAreaID=&query=table&catAbb=sss**&format=rss**](http://seattle.craigslist.org/search/?sort=rel&areaID=2&subAreaID=&query=table&catAbb=sss&format=rss)  
+[http://seattle.craigslist.org/search/?sort=rel&areaID=2&subAreaID=&query=table&catAbb=sss&format=rss](http://seattle.craigslist.org/search/?sort=rel&areaID=2&subAreaID=&query=table&catAbb=sss&format=rss)  
   
 This could be used for any RSS feed but craigslist is my current focus.
 
