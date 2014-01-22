@@ -21,179 +21,140 @@
 # THE SOFTWARE.
 
 
-import feedparser
 from twilio.rest import TwilioRestClient
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+import feedHandler
 import smtplib
-import urllib
-import json
 import sys
 import os
 
 __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
 def location(file):
-	return os.path.join(__location__,file)
-
-def getCListImgs(url):
-	myDat = urllib.urlopen(url).read()
-
-	myDat = myDat.split('imgList = ')[1]
-	myDat = myDat.split(';')[0]
-
-	imgList = json.loads(myDat)
-	return imgList
-
+    return os.path.join(__location__,file)
 
 ##Setting up variables
-if(len(sys.argv) > 1):
-	rssfeed = sys.argv[1]
-	open(location('rss.txt'), 'w').write(rssfeed)
+if(len(sys.argv) > 2):
+    rssfeed = sys.argv[1]+","+sys.argv[2]
+    open(location('rss.txt'), 'a').write(rssfeed+'\n')
 
 if not os.path.exists(location('rss.txt')):
-	print "Pass an RSS feed as a string parameter; Exiting."
-	sys.exit()
-rssfeed = open(location('rss.txt'), 'r')
-
-entries = {}
-newEntries = []
-text = ""
+    print "Pass an RSS feed and a name for that feed as two separate arguments; Exiting."
+    sys.exit()
 
 
-if not os.path.exists(location('accountData.txt')):
-	accountData = open(location('accountData.txt'), 'w')
-	if int(raw_input('Which way would you like to receive notifications?:\n\t[0] Twilio\n\t[1] Gmail\n')):
-		print "You've selected 'Gmail'"
-		accountData.write('GMAIL\n')
-		accountData.write(raw_input('Gmail user (user_name@gmail.com):') + '\n')
-		accountData.write(raw_input('Gmail password:') + '\n')
-	else:
-		print "You've selected 'Twilio'"
-		accountData.write('TWILIO\n')
-		accountData.write(raw_input('Twilio ACCOUNT_SID:') + '\n')
-		accountData.write(raw_input('Twilio AUTH_TOKEN:') + '\n')
-		accountData.write(raw_input('Twilio Phone Number (+19876543210):') + '\n')
-		accountData.write(raw_input('Receiving Phone Number (+19876543210):') + '\n')
-		accountData.close()
+def checkAccountData():
+    if not os.path.exists(location('accountData.txt')):
+        accountData = open(location('accountData.txt'), 'w')
+        if int(raw_input('Which way would you like to receive notifications?:\n\t[0] Twilio\n\t[1] Gmail\n')):
+            print "You've selected 'Gmail'"
+            accountData.write('GMAIL\n')
+            accountData.write(raw_input('Gmail user (user_name@gmail.com): ') + '\n')
+            accountData.write(raw_input('Gmail password: ') + '\n')
+        else:
+            print "You've selected 'Twilio'"
+            accountData.write('TWILIO\n')
+            accountData.write(raw_input('Twilio ACCOUNT_SID: ') + '\n')
+            accountData.write(raw_input('Twilio AUTH_TOKEN: ') + '\n')
+            accountData.write(raw_input('Twilio Phone Number (+19876543210): ') + '\n')
+            accountData.write(raw_input('Receiving Phone Number (+19876543210): ') + '\n')
+            accountData.close()
+
+def getAccountData():
+    accountData = {}
+    accountFile = open(location('accountData.txt'), 'r')
+    sendType = accountFile.readline().rstrip()
+    if sendType == "GMAIL":
+        accountData['sendMethod'] = 'GMAIL'
+        accountData['GMAIL_USER'] = accountFile.readline().rstrip()
+        accountData['GMAIL_PSWD'] = accountFile.readline().rstrip()
+
+    elif sendType == "TWILIO":
+        accountData['sendMethod'] = "TWILIO"
+        accountData['ACCOUNT_SID'] = accountFile.readline().rstrip()
+        accountData['AUTH_TOKEN'] = accountFile.readline().rstrip()
+        accountData['phoneSender'] = accountFile.readline().rstrip()
+        accountData['phoneReciver'] = accountFile.readline().rstrip()
+
+    return accountData
+
+def sendEmail(feed, accountData):
+    # print feed
+    data = feed.formatEmail()
+    if data['body']:
+        FROM = accountData['GMAIL_USER']
+        TO = accountData['GMAIL_USER']
+        MESSAGE = MIMEMultipart('alternative')
+        MESSAGE['subject'] = data['subject']
+        MESSAGE['From'] = FROM
+        MESSAGE['To'] = TO
+        MESSAGE.preamble = data['body']
+        MESSAGE.attach(MIMEText(data['body'], 'html'))
+        # Attempt to send email
+        try:
+            server = smtplib.SMTP("smtp.gmail.com", 587) #or port 465 doesn't seem to work!
+            server.ehlo()
+            server.starttls()
+            server.login(accountData['GMAIL_USER'], accountData['GMAIL_PSWD'])
+            server.sendmail(FROM, TO, MESSAGE.as_string())
+            server.close()
+            print 'Successfully sent email'
+        except Exception as e:
+            print "Failed to send mail"
+            print e
 
 
-#
-## Get Feed Data
-#
+def sendSMS(feed, accountData):
+    ACCOUNT_SID = accountData['ACCOUNT_SID']
+    AUTH_TOKEN = accountData['AUTH_TOKEN']
+    phoneSender = accountData['phoneSender']
+    phoneReciver = accountData['phoneReciver']
 
-##Loading entries file into entries object
-if not os.path.exists(location('entries.txt')):
-	open(location('entries.txt'), 'w').close()
-entriesFile = open(location('entries.txt'), 'r')
-for line in entriesFile:
-	entries[line.rstrip()] = True
-entriesFile.close()
+    client = TwilioRestClient(ACCOUNT_SID, AUTH_TOKEN)    
 
-##get read to append to the entries
-entriesFile = open(location('entries.txt'), 'a')
+    text = feed.formatSMS()
 
-feed = feedparser.parse(rssfeed.read())
+    ##If the string is blank send it along
+    if text is not "":
+        client.messages.create(
+            from_= phoneSender, to = phoneReciver, body = text
+        )
 
-##Go though all the entries, if there ones that were not in the entries
-##file before, add them. Also add them to newEntries so we know what data
-##to send
-for i in range(0, len(feed['entries'])):
-	entry = feed['entries'][i].link
-	if entry not in entries:
-		entriesFile.write(entry + '\n')
-		# newEntries.append(entry + "")
-		newEntries.append({
-			'link':	feed['entries'][i].link,
-			'summary': feed['entries'][i].summary,
-			'title' :  feed['entries'][i].title,
-			'imgs' :   getCListImgs(feed['entries'][i].link)
-			})
-		listing = urllib.urlopen(entry) # Why does this exist?
+def writeOldEntries(feeds):
+    entriesFile = open(location('entries.txt'), 'w')
+
+    for feed in feeds:
+        entriesFile.write(feed.buildEntryLine())
 
 
 
-#
-## Sending the Data
-#
-# Sends the data using the method that's specified at the top of the 
+def main():
 
-accountData = open(location('accountData.txt'), 'r')
-sendType = accountData.readline().rstrip()
+    checkAccountData()
+    
+    transmitDict = {}
+    transmitDict['GMAIL'] = sendEmail
+    transmitDict['TWILIO'] = sendSMS
 
-if sendType == "TWILIO":
-	ACCOUNT_SID = accountData.readline().rstrip()
-	AUTH_TOKEN = accountData.readline().rstrip()
-	phoneSender = accountData.readline().rstrip()
-	phoneReciver = accountData.readline().rstrip()
+    feeds = feedHandler.buildFeeds()
 
-	client = TwilioRestClient(ACCOUNT_SID, AUTH_TOKEN)
+    accountData = getAccountData()
+    # sendFunc is a function that we get out of the transmit dict. By doing
+    # this, it means not much code is required to add other ways of sending
+    # information.
+    sendFunc = transmitDict[accountData['sendMethod']]
 
-	# Do string processing for 
-	for data in newEntries:
-		text += data["link"] + '\n'
+    for x in feeds:
+        sendFunc(x, accountData)
 
-
-	##If the string is blank send it along
-	if text is not "":
-		client.messages.create(
-			from_= phoneSender, to = phoneReciver, body = text
-		)
-
-	##Close the filestream
-	entriesFile.close()
-
-elif sendType == "GMAIL":
-
-	# We do this string formatting here because we format the text differently
-	# for emails verses non-emails
-	#
-	# Additionally, this is currently a really, really ugly way to format
-	# html. This could be formatted soooo much better/done in a less hacky
-	# way.
-	for data in newEntries:
-		text+= '<hr>'
-		text+= '<p>\n{}\n<h3><a href="{}">{}</a></h3>\
-		\n\t{}<br>'.format(data["link"],data["link"],data['title'],data["summary"])
-
-		for links in data['imgs']:
-			text+= '\t<img src="{}" height="150">\n'.format(links)
-		pass
-		text+= '</p>'
+    writeOldEntries(feeds)
 
 
-	# Taken largely from here: http://stackoverflow.com/a/12424439
-	# and here: http://blog.spritecloud.com/2010/03/creating-and-sending-html-e-mails-with-python/
 
-	GMAIL_USER = accountData.readline().rstrip()
-	GMAIL_PSWD = accountData.readline().rstrip()
 
-	if text:
-		FROM = GMAIL_USER
-		TO = GMAIL_USER 
-		SUBJECT = "New Results from Feed!"
-		EMAIL_BODY = "New Feed Results:\n"+text
 
-		MESSAGE = MIMEMultipart('alternative')
-		MESSAGE['subject'] = SUBJECT
-		MESSAGE['From'] = FROM
-		MESSAGE['To'] = TO
-		MESSAGE.preamble = EMAIL_BODY
 
-		text = MIMEText(text,'html')
-		MESSAGE.attach(text)
-
-		# Attempt to send email
-		try:
-			# exit()
-			server = smtplib.SMTP("smtp.gmail.com", 587) #or port 465 doesn't seem to work!
-			server.ehlo()
-			server.starttls()
-			server.login(GMAIL_USER, GMAIL_PSWD)
-			server.sendmail(FROM, TO, MESSAGE.as_string())
-			server.close()
-			print 'Successfully sent email'
-		except Exception as e:
-			print "Failed to send mail"
-			print e
+if __name__ == '__main__':
+    main()
 

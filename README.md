@@ -16,11 +16,11 @@ This could be used for any RSS feed but craigslist is my current focus.
 [Twillio Python API](https://github.com/twilio/twilio-python)  
 [FeedParser](https://pypi.python.org/pypi/feedparser/#downloads)
 
-##Useage
+##Usage
 
 Download `main.py` and put in any directory that python has write access to.
 
-    python main.py 'RSS-FEED-LINK'
+    python main.py 'RSS-FEED-LINK' 'Alias for rss feed'
 
 
 The application will prompt you for which notification method you'd like, Gmail or Twillio.
@@ -39,4 +39,5 @@ Currently I am using `crontabs` to run the python script every 30 minutes. [Gett
 + Add generic email support because twillio cost money (Email servers are a lot harder to setup than I thought)  
 
 ##License
+
 MIT
