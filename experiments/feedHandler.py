@@ -42,7 +42,6 @@ class MyEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 
-
 __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
 def location(file):
