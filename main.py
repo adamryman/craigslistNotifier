@@ -51,6 +51,12 @@ def checkAccountData(silent = True):
             accountData.write(raw_input('Twilio Phone Number (+19876543210): ') + '\n')
             accountData.write(raw_input('Receiving Phone Number (+19876543210): ') + '\n')
             accountData.close()
+    # This is so if this function is used else where it can give the user
+    # feedback if there's already account data. However, when it's usually
+    # being run silent will be set to false and nothing will be printed.
+    elif not silent:
+        print "There's already account information entered. If you'd like to \
+re-enter account information, delete the 'accountData.txt' file and try again."
 
 def getAccountData():
     accountData = {}
