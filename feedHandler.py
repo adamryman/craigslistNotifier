@@ -1,4 +1,5 @@
 from __future__ import print_function
+import configReader
 import feedparser
 import urllib
 import time
@@ -59,59 +60,6 @@ def getCListImgs(url):
     except:
         imgList = []
     return imgList
-
-def readAllFeedData():
-    # This entire function exists to read the data files ('rss.txt',
-    # 'entries.txt') and parse the data into a form that can be turned into
-    # feed objects.
-    #
-    # It reads and parses each file separately, then consolidates the data
-    # from each into a single big json-like object.
-    #
-    if os.path.exists(location('rss.txt')):
-        rssFile = open(location('rss.txt'),'r')
-    else:
-        print("Make an rss file")
-        exit()
-    feedIdentifiers = []
-    for line in rssFile:
-        line = line.rstrip()
-        feedIdentifiers.append({
-            'url':line.split(',')[0],
-            'alias':line.split(',')[1]
-            }) 
-    
-    # Creates 'entries.txt' if it doesn't exist already
-    if not os.path.exists(location('entries.txt')):
-        print('Make sure there\'s stuff in the entries.txt file.')
-        open(location('entries.txt'), 'w').close()
-    entriesFile = open(location('entries.txt'), 'r')
-    feedEntries = []
-    for line in entriesFile:
-        line = line.rstrip()
-        feedEntries.append({
-            'url' : line.split(',')[0],
-            'entries' : line.split(',')[1::]
-            })
-
-    # Consolidates the entries and feed identifiers into the same dictionary (if they exist)
-    for entry in feedEntries:
-        for ids in feedIdentifiers:
-            if ids['url'] == entry['url'] :
-                ids['entries'] = entry['entries']
-    
-    # If there where no entries for a feed, then insert an empty list of
-    # entries (just to make sure there is a dictionary item, even if it is
-    # empty)
-    for ids in feedIdentifiers:
-        if 'entries' not in ids.keys():
-            ids['entries'] = []
-
-
-    rssFile.close()
-    entriesFile.close()
-
-    return feedIdentifiers
 
 
 
@@ -184,15 +132,22 @@ class feed(object):
         # This is a super, super ugly way to build this, but I guess it is
         # what it is.
         text = ""
+        
+        # I am so sorry for this formatting....
+        text += '<br><h1><a href="{}">{}</a></h1><br><ul>'.format(
+            self.url,
+            "Link to feed '{}'".format(self.alias) # Nested '.formats' *shudders*
+        )
+
         for data in self.newEntries:
-            text+= '<hr>'
+            text+= '<li><hr>'
             text+= '<p>\n{}\n<h2><a href="{}">{}</a></h2>\
             \n\t{}<br>'.format(data["url"],data["url"],data['title'],data["summary"])
 
             for urls in data['imgs']:
                 text+= '\t<img src="{}" height="150">\n'.format(urls)
-            pass
-            text+= '</p>'
+
+            text+= '</p></li>'
 
         toReturn['body'] = text
         toReturn['subject'] = 'New from "'+self.alias+'"'
@@ -221,7 +176,8 @@ class feed(object):
 
 
 def buildFeeds():
-    feedData = readAllFeedData()
+    
+    feedData = configReader.getAllFeedData()
 
     feedObjs = []
     for item in feedData:
