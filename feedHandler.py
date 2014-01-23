@@ -132,15 +132,22 @@ class feed(object):
         # This is a super, super ugly way to build this, but I guess it is
         # what it is.
         text = ""
+        
+        # I am so sorry for this formatting....
+        text += '<br><h1><a href="{}">{}</a></h1><br><ul>'.format(
+            self.url,
+            "Link to feed '{}'".format(self.alias) # Nested '.formats' *shudders*
+        )
+
         for data in self.newEntries:
-            text+= '<hr>'
+            text+= '<li><hr>'
             text+= '<p>\n{}\n<h2><a href="{}">{}</a></h2>\
             \n\t{}<br>'.format(data["url"],data["url"],data['title'],data["summary"])
 
             for urls in data['imgs']:
                 text+= '\t<img src="{}" height="150">\n'.format(urls)
-            pass
-            text+= '</p>'
+
+            text+= '</p></li>'
 
         toReturn['body'] = text
         toReturn['subject'] = 'New from "'+self.alias+'"'
