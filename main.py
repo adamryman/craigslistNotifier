@@ -34,20 +34,11 @@ __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file
 def location(file):
     return os.path.join(__location__,file)
 
-##Setting up variables
-if(len(sys.argv) > 2):
-    rssfeed = sys.argv[1]+","+sys.argv[2]
-    open(location('rss.txt'), 'a').write(rssfeed+'\n')
 
-if not os.path.exists(location('rss.txt')):
-    print "Pass an RSS feed and a name for that feed as two separate arguments; Exiting."
-    sys.exit()
-
-
-def checkAccountData():
+def checkAccountData(silent = True):
     if not os.path.exists(location('accountData.txt')):
         accountData = open(location('accountData.txt'), 'w')
-        if int(raw_input('Which way would you like to receive notifications?:\n\t[0] Twilio\n\t[1] Gmail\n')):
+        if int(raw_input('Which way would you like to receive notifications?:\n\t[1] Twilio\n\t[2] Gmail\n')) == 2:
             print "You've selected 'Gmail'"
             accountData.write('GMAIL\n')
             accountData.write(raw_input('Gmail user (user_name@gmail.com): ') + '\n')
@@ -126,10 +117,20 @@ def writeOldEntries(feeds):
 
     for feed in feeds:
         entriesFile.write(feed.buildEntryLine())
+    entriesFile.close()
 
 
 
 def main():
+    ##Setting up variables
+    if(len(sys.argv) > 2):
+        rssfeed = sys.argv[1]+","+sys.argv[2]
+        open(location('rss.txt'), 'a').write(rssfeed+'\n')
+
+    if not os.path.exists(location('rss.txt')):
+        print "Add an RSS feed using install.py or pass an RSS feed and a name for that feed as two separate argument; Exiting."
+        sys.exit()
+
 
     checkAccountData()
     
