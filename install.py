@@ -12,30 +12,14 @@ def location(file):
 def installCrontab(timeInterval=10, pythonPath=None):
     # Wrapper function for installation of crontab
     
-    # Setting up the variables we're gonna need
-    originDir = os.getcwd().strip()
-    
     if not pythonPath:
-        pythonPath = subprocess.check_output(['which','python']).strip()
-
-    
-    mainFilePath = originDir+'/main.py'
-
-    # Make our temp directory, and cd there
-    tmpDir = subprocess.check_output(['mktemp','-d']).rstrip()
-    os.chdir(tmpDir)
+        pythonPath = subprocess.check_output(['which','python']).strip()    
+    mainFilePath = os.getcwd().strip()+'/main.py'
     
     # Do the actual crontab installation
-    subprocess.call('crontab -l > temp',shell=True)
-    tempFile = open('temp','a')
-    tempFile.write(buildCron(timeInterval, pythonPath, mainFilePath))
-    tempFile.close()
-    subprocess.call('crontab temp', shell=True)
-    
-    # Change back to the original directory
-    os.chdir(originDir)
-    # Delete temporary directory
-    subprocess.call('rm -r '+tmpDir,shell=True)
+    oldCron = subprocess.check_output(['crontab','-l'])
+    oldCron += buildCron(timeInterval, pythonPath, mainFilePath)
+    subprocess.Popen(['crontab','-'],stdin=subprocess.PIPE).communicate(input = oldCron)
 
 
 def buildCron(timeInt, pyPath, mainLocation):
